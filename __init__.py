@@ -35,13 +35,13 @@ import requests
 
 # Read in google auth info
 CLIENT_ID = json.loads(open(
-    'client_secrets.json', 'r').read())['web']['client_id']
+    "/var/www/catalog/catalog/client_secrets.json", 'r').read())['web']['client_id']
 
 # Read in facebook auth info
 APP_ID = json.loads(open(
-    'fb_client_secrets.json', 'r').read())['web']['app_id']
+    "/var/www/catalog/catalog/fb_client_secrets.json", 'r').read())['web']['app_id']
 APP_SECRET = json.loads(open(
-    'fb_client_secrets.json', 'r').read())['web']['app_secret']
+    "/var/www/catalog/catalog/fb_client_secrets.json", 'r').read())['web']['app_secret']
 
 # Import Database code
 from sqlalchemy import create_engine
@@ -87,7 +87,7 @@ def gconnect():
     try:
         # upgrade the authorization code into a credentials object
         # create a oauth_flow object and add client_secret key info into it
-        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow = flow_from_clientsecrets('/var/www/catalog/catalog/client_secrets.json', scope='')
         # Specify with 'postmessage' that this is the onetime code flow the
         # server will be sending off
         oauth_flow.redirect_uri = 'postmessage'
@@ -102,7 +102,7 @@ def gconnect():
 
     # Check that the access token is valid
     access_token = credentials.access_token
-    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
+    url = ("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s"
             % access_token)
     # Create a JSON GET request that contains the url and access token
     # Store the result of the request in a variable called result
@@ -216,9 +216,10 @@ def fbconnect():
 
     # Strip expire tag from access token
     token = result.split(',')[0].split(':')[1].replace('"', '')
-
-    url = ('https://graph.facebook.com/v2.8'
-           '/me?access_token=%s&fields=name,id,email'
+    
+    # NOTE: for json.loads, enclose target string in double quotes
+    url = ("https://graph.facebook.com/v2.8"
+           "/me?access_token=%s&fields=name,id,email"
            % token
     )
 
@@ -238,8 +239,8 @@ def fbconnect():
 
     # Get user picture
     url = (
-        'https://graph.facebook.com/v2.8/me'
-        '/picture?access_token=%s&redirect=0&height=200&width=200' % token
+        "https://graph.facebook.com/v2.8/me"
+        "/picture?access_token=%s&redirect=0&height=200&width=200" % token
     )
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
