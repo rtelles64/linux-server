@@ -1,135 +1,226 @@
-# Item Catalog
+# Linux Server Configuration
+The Linux Server Configuration project is a requirement to Udacity's Full Stack Nanodegree program. The project is a baseline installion of a Linux server prepared to host web applications. It is a secure server against a number of attacks. It also includes a configured database, and has exisiting web application in it.
 
-An application that provides a list of items within a variety of categories as well as provide a user registration and authentication system. Registered users will have the ability to post, edit and delete their own items. A requirement for Udacity's Fullstack Nanodegree Program.
+You can visit http://54.149.235.117 or http://ec2-54-149-235-117.compute-1.amazonaws.com
 
-## Getting Started
+## Step by step walkthrough
+### Get your server
+1. Start a new Ubuntu Linux server instance on [Amazon Lightsail](https://lightsail.aws.amazon.com/).
+* Log in to Lightsail. If you don't already have an Amazon Web Services account, you'll be prompted to create one.
+* Create an instance
+* Pick a plain Ubuntu Linux image after choosing "OS Only". I chose Ubuntu 16.04 LTS.
+* Choose your instance plan. Picking the lowest one to get free-tier access for a month.
+* Give your instance a hostname. You can use any name you like, as long as it doesn't have spaces or unusual characters in it.
+* Wait for it to start up.
+  * While your instance is starting up, Lightsail shows you a grayed-out display.
+  * Once your instance is running, the display gets brighter.
+* The public IP address of the instance is displayed along with its name.
+2. Follow the instructions provided to SSH into the server.
+* From the `Account` Menu on Amazon Lightsail, click on the `SSH keys` tab and download the Default Private Key.
+* Move the file `LightsailDefaultKey-*.pem`(the * represents where the server is located) into the local folder `~/.ssh` and rename it `udacity_key.rsa`.
+* In your terminal, run the following command: `chmod 600 ~/.ssh/udacity_key.rsa`.
+* To connect to the server, run the following command in your terminal, `ssh -i ~/.ssh/udacity_key.rsa ubuntu@54.149.235.117`, where `54.149.235.117` is the public IP address of the server.
 
-My operating system is a Mac so the installation instructions reflect this system. The code editor used was Atom. Most of the files and configurations were provided by Udacity.
-
-### Installing Git
-
-Git is already installed on MacOS, but these instructions are to ensure we have the latest version:
-
-1. go to [https://git-scm.com/downloads](https://git-scm.com/downloads)
-2. download the software for Mac
-3. install Git choosing all the default options
-
-Once everything is installed, you should be able to run `git` on the command line. If usage information is displayed, we're good to go!
-
-### Configuring Mac's Terminal (OPTIONAL)
-
-Git can be used without reconfiguring the terminal but doing so makes it easier to use.
-
-To configure the terminal, perform the following:
-
-1. download [udacity-terminal-config.zip](http://video.udacity-data.com.s3.amazonaws.com/topher/2017/March/58d31ce3_ud123-udacity-terminal-config/ud123-udacity-terminal-config.zip)
-2. Move the `udacity-terminal-config` directory to the directory of your choice and name it `.udacity-terminal-config`(Note the dot in front)
-3. Move the `bash-profile` to the same directory as in `step 2` and name it `.bash_profile`(Note the dot in front)
-    * If you already have a `.bash_profile` file in your directory, transfer the content from the downloaded `bash_profile` to the existing `.bash_profile`
-
-**Note:** It's considerably easier to just use
-`mv bash_profile .bash_profile`
-and `mv udacity-terminal-config .udacity-terminal-config`
-when moving and renaming these files in order to avoid mac system errors
-
-### First Time Git Configuration
-Run each of the following lines on the command line to make sure everything is set up.
+### Secure your server
+3. Update all currently installed packages.
+* In your terminal, run the following commands:
 ```
-# sets up Git with your name
-git config --global user.name "<Your-Full-Name>"
-
-# sets up Git with your email
-git config --global user.email "<your-email-address>"
-
-# makes sure that Git output is colored
-git config --global color.ui auto
-
-# displays the original state in a conflict
-git config --global merge.conflictstyle diff3
-
-git config --list
+sudo apt-get update
+sudo apt-get upgrade
 ```
-
-### Git & Code Editor
-
-The last step of configuration is to get Git working with your code editor. Below is the configuration for Atom. If you use a different editor, then do a quick search on Google for "associate X text editor with Git" (replace the X with the name of your code editor).
+4. Change the SSH port from 22 to 2200. Make sure to configure the Lightsail firewall to allow it.
+* Edit the `/etc/ssh/sshd_config` by running the following command: `sudo nano /etc/ssh/sshd_config`.
+* Change the port number on line 5 from `22` to `2200`.
+* Find the `PermitRootLogin` and edit it to `no`.
+* Save and exit using `CTRL+X` and confirm the changes with `Y` then hit `Enter` to exit the nano editor.
+* Restart the SSH connection by running the following command: `sudo service ssh restart`.
+5. Configure the Uncomplicated Firewall (UFW) to only allow incoming connections for SSH (port 2200), HTTP (port 80), and NTP (port 123).
+* Run the following commands:
 ```
-git config --global core.editor "atom --wait"
+sudo ufw status
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 2200/tcp
+sudo ufw allow www
+sudo ufw allow 123/udp
+sudo ufw deny 22
+sudo ufw enable
+y
+exit
 ```
+* Go to your Amazon Lightsail Instances and click on the three vertical dots in the instance and click on `Manage`. Click on the `Networking` tab and change the firewall configuration to match the instance firewall settings above.
+* Allows ports 2200 (TCP), 80 (TCP), and 123 (UDP). Deny the default port 22.
+* In your terminal, run the following command: `ssh -i ~/.ssh/udacity_key.rsa -p 2200 ubuntu@54.149.235.117`.
 
-### Install Virtual Box
 
-VirtualBox is the software that actually runs the virtual machine. Download it [here](https://www.virtualbox.org/wiki/Download_Old_Builds_5_1). Install the platform package for your operating system. You do not need the extension pack or the SDK. You do not need to launch VirtualBox after installing it; Vagrant will do that.
+### Give grader access
+8. Create a new user account named `grader`.
+* In your terminal, run the following command: `sudo adduser grader`.
+* Enter a password twice and fill out information for `grader`.
+9. Give `grader` the permision to `sudo`.
+* In your terminal, run the following command: `sudo visudo`.
+* Under the line `root ALL=(ALL:ALL) ALL`, add this line `grader ALL=(ALL:ALL) ALL`.
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+10. Create an SSH key pair for `grader` using the `ssh-keygen` tool.
+* On the local machine:
+ * In your terminal, run the following commands:
+ ```
+ cd ~/.ssh
+ ssh-keygen -f ~/.ssh/grader_key.rsa
+ grader
+ grader
+ cat ~/.ssh/grader_key.rsa.pub
+ ```
+ * Copy the contents of `grader_key.rsa.pub`
+ * On ubuntu's terminal, run the following commands:
+ ```
+ touch /home/grader/.ssh/authorized_keys
+ ```
+ * Paste the content into this file, save and exit.
+ * On graders's terminal, run the following commands:
+ ```
+ sudo chmod 700 /home/grader/.ssh
+ sudo chmod 644 /home/grader/.ssh/authorized_keys
+ sudo chown -R grader:grader /home/grader/.ssh
+ sudo service ssh restart
+ ```
+ * You are now able to ssh as grader by running the following command: `ssh -i ~/.ssh/grader_key.rsa -p 2200 grader@54.149.235.117`
 
-### Install Vagrant
-
-Vagrant is the software that configures the VM and lets you share files between your host computer and the VM's filesystem. Download it [here](https://www.vagrantup.com/downloads.html). Install the version for your operating system.
-
-If vagrant is successfully installed, you will be able to run `vagrant --version` in the terminal to see the version number.
-
-### Download VM configuration
-
-Download [FSND-Virtual-Machine.zip](https://s3.amazonaws.com/video.udacity-data.com/topher/2018/April/5acfbfa3_fsnd-virtual-machine/fsnd-virtual-machine.zip). This will give you a directory called **FSND-Virtual-Machine**.
-
-Alternatively you can fork the repo [https://github.com/udacity/fullstack-nanodegree-vm](https://github.com/udacity/fullstack-nanodegree-vm) on Github.
-
-Change to this newly downloaded directory using `cd` in the terminal. Change to the `vagrant`
-directory inside.
-
-### Starting the Virtual Machine
-
-From your terminal, inside the vagrant subdirectory, run the command `vagrant up`. Vagrant will download the Linux operating system and install it. This may take quite a while (many minutes) depending on how fast your Internet connection is.
-
-When `vagrant up` is finished running, you will get your shell prompt back. At this point, you can run `vagrant ssh` to log in to your newly installed Linux VM!
-
-### Logged In
-
-If you are now looking at a shell prompt that starts with the word `vagrant` congratulations — you've gotten logged into your Linux VM.
-
-## Version
-
-This project uses `Python 3`
-
-## Run catalog.py
-
-With data loaded and with `catalog.py` in the `vagrant/catalog` directory, run:
-
+### Prepare to deploy your project
+11. Configure the local timezone to UTC.
+* Run the following command, `sudo dpkg-reconfigure tzdata`, choose `Etc` or `None of the above`, and finally `UTC`.
+12. Install and configure Apache to server a Python mod_wsgi application.
+* While logged in as `grader`, run the following command: `sudo apt-get install apache2`.
+* If the Apache2 Ubuntu Default Page loads after entering `54.149.235.117` into the browser, Apache was successfully installed.
+* Run the following commands:
 ```
-python catalog.py
+sudo apt-get install libapache2-mod-wsgi-py3
+sudo a2enmod wsgi
+sudo service apache2 start
 ```
+13. Install `git`.
+* While logged in as `grader`, run the follow command: `sudo apt-get install git`.
 
-or, if this doesn't work:
-
+### Deploy the Item Catalog project.
+14. Clone and setup my Item Catalog project.
+* While logged in as `grader`, run the following commands:
 ```
-python3 catalog.py
+sudo mkdir /var/www/catalog
+cd /var/www/catalog
+sudo git clone https://github.com/rtelles64/ItemCatalog catalog
+cd /var/www
+sudo chown -R grader:grader catalog/
+cd /var/www/catalog/catalog
+mv app.py __init__.py
+nano __init__.py
 ```
+* Near the bottom of `__init__.py` are the lines:
+```
+app.debug = True
+app.run(host='0.0.0.0', port=8000)
+```
+* Delete the two lines and add the following line: `app.run()`.
+* Near the top of `__init__.py` is the line: `engine = create_engine('sqlite:///catalog.db',connect_args={'check_same_thread': False})`
+* Replace the line with the following line: `engine = create_engine('postgresql://catalog:catalog@localhost/catalog')`
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+* Run the following command: `nano database_setup.py`.
+* Near the bottom of `database_setup.py` is the line: `engine = create_engine('sqlite:///catalog.db')`
+* Replace the line with the following line: `engine = create_engine('postgresql://catalog:catalog@localhost/catalog')`
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+* Run the following commmand: `sudo nano /var/www/catalog/catalog.wsgi` and add these lines:
+```
+activate_this = '/var/www/catalog/catalog/venv3/bin/activate_this.py'
+with open(activate_this) as file_:
+    exec(file_.read(), dict(__file__=activate_this))
 
-### Visit localhost:8000
+#!/usr/bin/python
+import sys
+import logging
+logging.basicConfig(stream=sys.stderr)
+sys.path.insert(0, "/var/www/catalog/catalog/")
+sys.path.insert(1, "/var/www/catalog/")
 
-With the application running, visit `http://localhost:8000` on your favorite browser to test out the app.
+from catalog import app as application
+application.secret_key = 'super_secret_key'
+```
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+15. Install virtual environment
+* Run the following commands:
+```
+sudo apt-get install python3-pip
+sudo pip install virtualenv
+cd /var/www/catalog/catalog
+virtualenv -p python3 venv3
+sudo chown -R grader:grader venv3/
+. venv3/bin/activate
+```
+16. Install Flask
+* Run the following command: `pip install Flask`
+17. Install the project's dependencies
+* Run the following command:
+```
+pip install httplib2
+pip install requests
+pip install --upgrade oauth2client
+pip install sqlalchemy
+sudo apt-get install libpq-dev
+pip install pyscopg2
+deactivate
+```
+18. Configure and enable a new virtual host
+* Run the following command: `sudo nano /etc/apache2/mods-enabled/wsgi.conf`
+* Below where it says `#WSGIPythonPath directory|directory-1:directory-2:...` add the following line: `#WSGIPythonPath /var/www/catalog/catalog/venv3/lib/python3.5/site-packages`
+* Run the following command: `sudo nano /etc/apache2/sites-available/catalog.conf` and paste the following code:
+```
+<VirtualHost *:80>
+    ServerName 54.149.235.117
+  ServerAlias ec2-54-149-235-117-compute-1.amazonaws.com
+    WSGIScriptAlias / /var/www/catalog/catalog.wsgi
+    <Directory /var/www/catalog/catalog/>
+    	Order allow,deny
+  	  Allow from all
+    </Directory>
+    Alias /static /var/www/catalog/catalog/static
+    <Directory /var/www/catalog/catalog/static/>
+  	  Order allow,deny
+  	  Allow from all
+    </Directory>
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    LogLevel warn
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+```
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+* Run the following command: `sudo a2ensite catalog`
+* Run the following command: `sudo service apache2 reload`
+19. Install and configure PostgreSQL
+* Run the following commands:
+```
+sudo apt-get install libpq-dev python-dev
+sudo apt-get install postgresql postgresql-contrib
+sudo su - postgres
+psql
+CREATE USER catalog WITH PASSWORD 'catalog';
+ALTER USER catalog CREATEDB;
+CREATE DATABASE catalog WITH OWNER catalog;
+\c catalog
+REVOKE ALL ON SCHEMA public FROM public;
+GRANT ALL ON SCHEMA public TO catalog;
+\q
+exit
+. venv3/bin/activate
+python /var/www/catalog/catalog/database_setup.py
+sudo nano /etc/postgresql/9.5/main/pg_hba.conf
+deactivate
+```
+* Paste the following into `pg_hba.conf`:
+```
+local   all             postgres                                peer
+local   all             all                                     peer
+host    all             all             127.0.0.1/32            md5
+host    all             all             ::1/128                 md5
+```
+* Save and exit using `CTRL+X` and confirm the changes with `Y` and hit `Enter` to exit.
+* Run the following command: `sudo service apache2 restart`
 
-## Exit the App
-
-To exit the app, on your keyboard press `control + c`.
-
-## Exit Vagrant
-
-To exit vagrant, on your keyboard press `control + d`.
-
-## Issues
-### Facebook Login
-When logging in with Facebook, a popup window is generated. Depending on your browser settings, this window may be blocked. You will have to enable this window in order to log in.
-After logging in, Facebook will tell you to `close tab to continue to app` please do so.
-You will then have to login again by clicking the Facebook login button once more. This will then say `previously logged in, do you wish to continue to app?` in which you say Ok
-
-## Author(s)
-
-* **Roy Telles, Jr.** *(with the help of the Udacity team)*
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* I would like to acknowledge and give big thanks to Udacity and team for this excellent resume-building experience
+#### Special thanks to [kcalata](https://github.com/kcalata/Linux-Server-Configuration/blob/master/README.md) for his detailed README
